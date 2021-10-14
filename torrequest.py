@@ -9,8 +9,8 @@ import time
 
 class TorRequest(object):
   def __init__(self, 
-      proxy_port=9050, 
-      ctrl_port=9051,
+      proxy_port=9150,
+      ctrl_port=9151,
       password=None):
 
     self.proxy_port = proxy_port
