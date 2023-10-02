@@ -7,15 +7,13 @@ import requests
 
 import time
 
-class TorRequest(object):
-  def __init__(self, 
-      proxy_port=9050, 
-      ctrl_port=9051,
-      password=None):
+import socket
 
-    self.proxy_port = proxy_port
-    self.ctrl_port = ctrl_port
-    
+class TorRequest(object):
+  def __init__(self, password=None):
+
+    self.proxy_port, self.ctrl_port = self.choose_tor_ports()
+
     self._tor_proc = None
     if not self._tor_process_exists():
       self._tor_proc = self._launch_tor()
@@ -26,12 +24,30 @@ class TorRequest(object):
     self.session = requests.Session()
     self.session.proxies.update({
       'http': 'socks5://localhost:%d' % self.proxy_port,
-      'https': 'socks5://localhost:%d' % self.proxy_port,
+      'https:': 'socks5://localhost:%d' % self.proxy_port,
     })
 
-    self.session.proxies.update({
-       'https': 'socks5h://localhost:%d' % self.proxy_port,
-    })
+        # Default port is in use, use auxiliary ports
+  def choose_tor_ports(self):
+    if self.is_port_in_use(9050):
+
+       proxy_port = 9052
+       ctrl_port = 9053
+    else:
+        # Default port is not in use, use TorRequest default ports
+       proxy_port = 9050
+       ctrl_port = 9051
+
+    return proxy_port, ctrl_port
+
+def is_port_in_use(self, port):
+       try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                s.connect(('127.0.0.1', port))
+                return True
+       except (socket.timeout, ConnectionRefusedError):
+           return False
 
   def _tor_process_exists(self):
     try:
@@ -64,15 +80,7 @@ class TorRequest(object):
   def reset_identity_async(self):
     self.ctrl.signal(stem.Signal.NEWNYM)
 
-  def _reset_session(self):
-    self.session = requests.Session()
-    self.session.proxies.update({
-        'http': 'socks5://localhost:%d' % self.proxy_port,
-        'https': 'socks5://localhost:%d' % self.proxy_port,
-    })
-
-  def reset_identity(self):
-    self._reset_session()
+def reset_identity(self):
     self.reset_identity_async()
     time.sleep(self.ctrl.get_newnym_wait())
 
@@ -96,4 +104,3 @@ class TorRequest(object):
 
   def __exit__(self, *args):
     self.close()
-
