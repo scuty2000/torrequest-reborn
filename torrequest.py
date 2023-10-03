@@ -1,4 +1,3 @@
-
 import stem
 from stem.control import Controller
 from stem.process import launch_tor_with_config
@@ -27,20 +26,21 @@ class TorRequest(object):
       'https:': 'socks5://localhost:%d' % self.proxy_port,
     })
 
-        # Default port is in use, use auxiliary ports
+
+  # Default port is in use, use auxiliary ports
   def choose_tor_ports(self):
     if self.is_port_in_use(9050):
 
        proxy_port = 9052
        ctrl_port = 9053
     else:
-        # Default port is not in use, use TorRequest default ports
+  # Default port is not in use, use TorRequest default ports
        proxy_port = 9050
        ctrl_port = 9051
 
     return proxy_port, ctrl_port
 
-def is_port_in_use(self, port):
+  def is_port_in_use(self, port):
        try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(1)
@@ -48,6 +48,10 @@ def is_port_in_use(self, port):
                 return True
        except (socket.timeout, ConnectionRefusedError):
            return False
+
+       self.session.proxies.update({
+          'https': 'socks5h://localhost:%d' % self.proxy_port,
+    })
 
   def _tor_process_exists(self):
     try:
@@ -66,21 +70,30 @@ def is_port_in_use(self, port):
       take_ownership=True)
 
   def close(self):
-    try: 
+    try:
       self.session.close()
     except: pass
 
-    try: 
+    try:
       self.ctrl.close()
     except: pass
 
     if self._tor_proc:
       self._tor_proc.terminate()
 
+  #Fix identity change (session renewal) and HTTPs proxies not using tor
   def reset_identity_async(self):
     self.ctrl.signal(stem.Signal.NEWNYM)
 
-def reset_identity(self):
+  def _reset_session(self):
+    self.session = requests.Session()
+    self.session.proxies.update({
+        'http': 'socks5://localhost:%d' % self.proxy_port,
+        'https': 'socks5://localhost:%d' % self.proxy_port,
+    })
+
+  def reset_identity(self):
+    self._reset_session()
     self.reset_identity_async()
     time.sleep(self.ctrl.get_newnym_wait())
 
@@ -95,7 +108,7 @@ def reset_identity(self):
 
   def patch(self, *args, **kwargs):
     return self.session.patch(*args, **kwargs)
-    
+
   def delete(self, *args, **kwargs):
     return self.session.delete(*args, **kwargs)
 
